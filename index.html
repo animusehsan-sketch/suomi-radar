@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suomi Radar - Live Finland Flights</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Auth Modal Extra Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-content {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 32px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .modal-content h2 { color: #ef4444; margin-bottom: 12px; }
+        .modal-content p { color: var(--text-secondary); margin-bottom: 24px; font-size: 0.95rem; line-height: 1.5; }
+        .input-group { margin-bottom: 16px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-secondary); }
+        .input-group input { 
+            width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--panel-border); 
+            background: rgba(255,255,255,0.05); color: white; outline: none; transition: border-color 0.2s;
+        }
+        .input-group input:focus { border-color: var(--accent); }
+        .auth-btn { 
+            width: 100%; padding: 12px; background: var(--accent); color: var(--bg-dark); 
+            border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; margin-top: 8px; transition: background 0.2s;
+        }
+        .auth-btn:hover { background: var(--accent-hover); }
+        .close-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; margin-top: 16px; font-size: 0.85rem;}
+        .close-btn:hover { text-decoration: underline; color: white;}
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="glass-panel sidebar">
+            <header>
+                <h1>Suomi Radar</h1>
+                <p>Live open airspace</p>
+            </header>
+            
+            <div class="stats-container">
+                <div class="stat-box">
+                    <span class="stat-label">Flights Tracked</span>
+                    <span class="stat-value" id="flight-count">...</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Last Updated</span>
+                    <span class="stat-value" id="last-updated">...</span>
+                </div>
+            </div>
+
+            <div class="flight-list-container">
+                <h3>Active Flights</h3>
+                <ul class="flight-list" id="flight-list">
+                    <li class="flight-placeholder">Connecting to live network...</li>
+                </ul>
+            </div>
+            
+            <footer>
+                <p>Data provided by <a href="https://airplanes.live" target="_blank">Airplanes.live</a></p>
+            </footer>
+        </aside>
+
+        <main class="map-container" id="map"></main>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="app.js?v=3"></script>
+</body>
+</html>
