@@ -3,108 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suomi Radar - Live Finland Flights</title>
+    <title>Suomi Radar - Live Finland Flights Tracker</title>
+    <meta name="description" content="Live real-time flight tracking over Finland. Visualize air traffic with high-precision ADS-B data, interactive maps, and glassmorphic design.">
+    <meta name="keywords" content="flight tracker, Finland radar, live flights, aviation, ADS-B, Leaflet map, Suomi Radar">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Suomi Radar - Live Finland Flights Tracker">
+    <meta property="og:description" content="Real-time air traffic visualization over Finland using live ADS-B data.">
+    <meta property="og:type" content="website">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Auth Modal Extra Styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-        .modal-content {
-            background: var(--panel-bg);
-            border: 1px solid var(--panel-border);
-            border-radius: 16px;
-            padding: 32px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
-            text-align: center;
-        }
-        .modal-content h2 { color: #ef4444; margin-bottom: 12px; }
-        .modal-content p { color: var(--text-secondary); margin-bottom: 24px; font-size: 0.95rem; line-height: 1.5; }
-        .input-group { margin-bottom: 16px; text-align: left; }
-        .input-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-secondary); }
-        .input-group input { 
-            width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--panel-border); 
-            background: rgba(255,255,255,0.05); color: white; outline: none; transition: border-color 0.2s;
-        }
-        .input-group input:focus { border-color: var(--accent); }
-        .auth-btn { 
-            width: 100%; padding: 12px; background: var(--accent); color: var(--bg-dark); 
-            border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; margin-top: 8px; transition: background 0.2s;
-        }
-        .auth-btn:hover { background: var(--accent-hover); }
-        .close-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; margin-top: 16px; font-size: 0.85rem;}
-        .close-btn:hover { text-decoration: underline; color: white;}
-    </style>
 </head>
 <body>
     <div class="app-container">
-        <aside class="glass-panel sidebar">
+        <!-- Sidebar Toggle for Mobile -->
+        <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle Sidebar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+
+        <aside class="glass-panel sidebar" id="sidebar">
             <header>
-                <h1>Suomi Radar</h1>
-                <p>Live open airspace</p>
+                <div class="logo-area">
+                    <div class="radar-pulse"></div>
+                    <h1>Suomi Radar</h1>
+                </div>
+                <p class="tagline">Live Northern Airspace</p>
             </header>
             
-            <div class="stats-container">
-                <div class="stat-box">
-                    <span class="stat-label">Flights Tracked</span>
-                    <span class="stat-value" id="flight-count">...</span>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Active Flights</span>
+                    <div class="stat-value-container">
+                        <span class="stat-value" id="flight-count">0</span>
+                        <div class="live-indicator"></div>
+                    </div>
                 </div>
-                <div class="stat-box">
-                    <span class="stat-label">Last Updated</span>
-                    <span class="stat-value" id="last-updated">...</span>
+                <div class="stat-card">
+                    <span class="stat-label">Last Ping</span>
+                    <span class="stat-value mono" id="last-updated">--:--:--</span>
                 </div>
+            </div>
+
+            <div class="search-box">
+                <input type="text" id="flight-search" placeholder="Search callsign or reg...">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+
+            <div class="flight-list-header">
+                <h3>Live Traffic</h3>
+                <span class="badge" id="visible-count">0 visible</span>
             </div>
 
             <div class="flight-list-container">
-                <h3>Active Flights</h3>
                 <ul class="flight-list" id="flight-list">
-                    <li class="flight-placeholder">Connecting to live network...</li>
+                    <li class="flight-placeholder">
+                        <div class="spinner"></div>
+                        <span>Initializing Radar...</span>
+                    </li>
                 </ul>
             </div>
             
-            <footer>
-                <p>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-bottom: 2px;">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"></path>
-                        <path d="M12 12l4-4"></path>
-                        <path d="M12 12l-4-4"></path>
+            <footer class="sidebar-footer">
+                <div class="data-source">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
                     </svg>
-                    Data provided via FlightRadar24 Live Feed &bull; Finland Region
-                </p>
+                    <span>Real-time ADS-B via Airplanes.live</span>
+                </div>
             </footer>
         </aside>
 
-        <main class="map-container" id="map"></main>
+        <main class="map-wrapper">
+            <div id="map" class="map-container"></div>
+            
+            <!-- Map Overlay Controls -->
+            <div class="map-controls">
+                <button class="control-btn" id="recenter-btn" title="Recenter on Finland">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+            </div>
+        </main>
     </div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="app.js?v=3"></script>
+    <script src="app.js"></script>
 </body>
 </html>

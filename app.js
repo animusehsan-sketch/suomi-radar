@@ -1,179 +1,293 @@
-// Core Application Logic
+/**
+ * Suomi Radar - Core Logic
+ * High-performance flight tracking with smooth interpolation
+ */
 
-// API Endpoint for ADSB Airplanes.live (Center of Finland, 250 Nautical Miles radius)
-// This strictly circumvents previous generic OpenSky 429 bounds restrictions!
-const API_URL = `https://api.airplanes.live/v2/point/64.0/26.0/250`;
+// Configuration
+const CONFIG = {
+    API_URL: 'https://api.airplanes.live/v2/point/64.0/26.0/250',
+    REFRESH_INTERVAL: 10000, // 10 seconds for API fetch
+    SMOOTH_INTERVAL: 1000,   // 1 second for interpolation
+    INITIAL_VIEW: [64.0, 26.0],
+    INITIAL_ZOOM: 5
+};
 
 // App State
-let map;
-let markers = {};
-let globalFlights = [];
+const state = {
+    map: null,
+    markers: {},
+    flights: [],
+    searchQuery: '',
+    sidebarHidden: false
+};
 
 // DOM Elements
-const flightCountEl = document.getElementById('flight-count');
-const lastUpdatedEl = document.getElementById('last-updated');
-const flightListEl = document.getElementById('flight-list');
+const elements = {
+    flightCount: document.getElementById('flight-count'),
+    visibleCount: document.getElementById('visible-count'),
+    lastUpdated: document.getElementById('last-updated'),
+    flightList: document.getElementById('flight-list'),
+    searchInput: document.getElementById('flight-search'),
+    sidebar: document.getElementById('sidebar'),
+    sidebarToggle: document.getElementById('sidebar-toggle'),
+    recenterBtn: document.getElementById('recenter-btn')
+};
 
-// Initialize Map
-function initMap() {
-    map = L.map('map').setView([64.0, 26.0], 5);
+// Plane SVG Template
+const planeSVG = (color = 'var(--accent)') => `
+<svg class="plane-marker" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M21 11.5L14 11.5L10 3L8.5 3L10.5 11.5L4 11.5L2.5 9.5L1 9.5L2.5 12.5L1 15.5L2.5 15.5L4 13.5L10.5 13.5L8.5 22L10 22L14 13.5L21 13.5C22.1 13.5 23 12.6 23 11.5C23 10.4 22.1 9.5 21 9.5L21 11.5Z" fill="${color}"/>
+</svg>`;
 
+/**
+ * Initialize the Application
+ */
+function init() {
+    // Initialize Leaflet Map
+    state.map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false
+    }).setView(CONFIG.INITIAL_VIEW, CONFIG.INITIAL_ZOOM);
+
+    // Add Zoom Control to Top Right
+    L.control.zoom({ position: 'topright' }).addTo(state.map);
+
+    // Dark Mode Tiles (CartoDB Dark Matter)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 20
-    }).addTo(map);
+        maxZoom: 19
+    }).addTo(state.map);
 
-    // Initial Fetch (Continuous real data tracking)
+    // Event Listeners
+    elements.searchInput.addEventListener('input', handleSearch);
+    elements.sidebarToggle.addEventListener('click', toggleSidebar);
+    elements.recenterBtn.addEventListener('click', recenterMap);
+
+    // Initial Fetch
     fetchFlights();
-    
-    // Refresh API Data Every 15 seconds (Airplanes.live handles anonymous tracking up to 1hz perfectly)
-    // 10s is optimal for radar smooth network performance balancing bandwidth
-    setInterval(fetchFlights, 10000);
-    
-    // Smooth Real-Time UI Updates (Interpolate positions every 1 second)
-    setInterval(smoothUpdateRoutine, 1000);
+
+    // Set Timers
+    setInterval(fetchFlights, CONFIG.REFRESH_INTERVAL);
+    setInterval(smoothUpdate, CONFIG.SMOOTH_INTERVAL);
 }
 
-const planeSVG = `
-<svg class="plane-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path d="M21 11.5L14 11.5L10 3L8.5 3L10.5 11.5L4 11.5L2.5 9.5L1 9.5L2.5 12.5L1 15.5L2.5 15.5L4 13.5L10.5 13.5L8.5 22L10 22L14 13.5L21 13.5C22.1 13.5 23 12.6 23 11.5C23 10.4 22.1 9.5 21 9.5L21 11.5Z"/>
-</svg>
-`;
-
-function formatTime(date) {
-    return date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
-}
-
-function formatAlt(feet) {
-    if (feet === undefined || feet === null) return 'N/A';
-    if (feet === 'ground') return 'On Ground';
-    return Number(feet).toLocaleString() + ' ft';
-}
-
-function formatSpeed(knots) {
-    if (knots === undefined || knots === null) return 'N/A';
-    return Math.round(knots) + ' kts';
-}
-
-// Fetch Flight Data from Free Airplanes.live Network
+/**
+ * Fetch Data from Airplanes.live
+ */
 async function fetchFlights() {
     try {
-        const response = await fetch(API_URL);
-        if (!response.ok) throw new Error('Network response was not ok');
+        const response = await fetch(CONFIG.API_URL);
+        if (!response.ok) throw new Error('API Unavailable');
         
         const data = await response.json();
-        const globalStates = data.ac || [];
+        const rawFlights = data.ac || [];
         
-        // Map Airplanes.live JSON Object structure seamlessly
-        globalFlights = globalStates.map(state => ({
-            id: state.hex,
-            callsign: state.flight ? state.flight.trim() : 'Unknown',
-            reg: state.r || 'N/A', // Registration mark e.g. OH-LVK
-            lng: state.lon,
-            lat: state.lat,
-            alt: state.alt_baro, // Already in feet
-            speed: state.gs, // in knots
-            heading: state.track !== undefined ? state.track : 0
-        })).filter(f => f.lat !== null && f.lng !== null);
+        // Transform API data to internal format
+        state.flights = rawFlights
+            .map(f => ({
+                id: f.hex,
+                callsign: (f.flight || '???').trim(),
+                reg: f.r || 'N/A',
+                lat: f.lat,
+                lng: f.lon,
+                alt: f.alt_baro || 0,
+                speed: f.gs || 0,
+                heading: f.track || 0,
+                type: f.t || 'Unknown'
+            }))
+            .filter(f => f.lat !== undefined && f.lng !== undefined);
+
+        updateUI();
+        renderMarkers();
         
-        updateSidebar(globalFlights);
-        
-        // Push initial rendering of new batch so they appear immediately
-        renderMapMarkers(globalFlights);
-        
-        flightCountEl.textContent = globalFlights.length;
-        lastUpdatedEl.textContent = formatTime(new Date());
-        
+        elements.lastUpdated.textContent = new Date().toLocaleTimeString('en-GB');
     } catch (error) {
-        console.warn('Network Error fetching Airplanes.live data:', error);
-        flightListEl.innerHTML = '<li class="flight-placeholder" style="color: #ef4444;">Connecting to Airplanes.live Stream...</li>';
+        console.error('Radar Error:', error);
+        if (state.flights.length === 0) {
+            elements.flightList.innerHTML = '<li class="flight-placeholder">Signal Lost. Reconnecting...</li>';
+        }
     }
 }
 
-// Highly responsive fast routine updating plane positions smoothly using dead reckoning navigation math
-function smoothUpdateRoutine() {
-    if (globalFlights.length === 0) return;
-    
-    globalFlights.forEach(flight => {
-        if (flight.speed && flight.heading !== null) {
-             // flight.speed is in Knots. Conversion: 1 knot ≈ 0.514444 meters/second
-            const velocityMps = flight.speed * 0.514444;
-            const distanceMeters = velocityMps * 1;  // Dist over 1 second tick
+/**
+ * Smoothly Interpolate Plane Positions (Dead Reckoning)
+ */
+function smoothUpdate() {
+    if (state.flights.length === 0) return;
+
+    state.flights.forEach(f => {
+        if (f.speed > 0) {
+            // 1 knot ≈ 0.000514 km/s. 1 degree ≈ 111km.
+            // 1 knot ≈ 4.63e-6 degrees/second
+            const speedFactor = 0.00000463; 
+            const rad = (f.heading - 90) * (Math.PI / 180);
             
-            const dLat = (distanceMeters * Math.cos(flight.heading * Math.PI / 180)) / 111111;
-            const dLng = (distanceMeters * Math.sin(flight.heading * Math.PI / 180)) / (111111 * Math.cos(flight.lat * Math.PI / 180));
-            
-            flight.lat += dLat;
-            flight.lng += dLng;
+            f.lat -= Math.sin(rad) * (f.speed * speedFactor);
+            f.lng += Math.cos(rad) * (f.speed * speedFactor);
         }
     });
 
-    renderMapMarkers(globalFlights);
+    renderMarkers();
 }
 
-function renderMapMarkers(flights) {
-    const currentFlightIds = new Set();
-    flights.forEach(flight => {
-        currentFlightIds.add(flight.id);
-        const iconHtml = `<div class="plane-icon" style="transform: rotate(${flight.heading - 90}deg)">${planeSVG}</div>`;
-        const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
-        const popupContent = `
-            <div class="popup-title">${flight.callsign}</div>
-            <div class="popup-detail"><strong>Reg:</strong> ${flight.reg}</div>
-            <div class="popup-detail"><strong>Altitude:</strong> ${formatAlt(flight.alt)}</div>
-            <div class="popup-detail"><strong>Speed:</strong> ${formatSpeed(flight.speed)}</div>
-            <div class="popup-detail"><strong>Heading:</strong> ${Math.round(flight.heading)}&deg;</div>
+/**
+ * Render Plane Markers on Map
+ */
+function renderMarkers() {
+    const currentIds = new Set();
+    const filteredFlights = getFilteredFlights();
+
+    filteredFlights.forEach(f => {
+        currentIds.add(f.id);
+        const rotation = f.heading - 90;
+        
+        const iconHtml = `
+            <div class="plane-icon-wrapper" style="transform: rotate(${rotation}deg)">
+                ${planeSVG()}
+            </div>
         `;
 
-        if (markers[flight.id]) {
-            markers[flight.id].setLatLng([flight.lat, flight.lng]);
-            markers[flight.id].setIcon(customIcon);
-            if (!markers[flight.id].isPopupOpen()) {
-               markers[flight.id].setPopupContent(popupContent);
+        const icon = L.divIcon({
+            html: iconHtml,
+            className: 'custom-plane-icon',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+
+        const popupContent = `
+            <div class="popup-container">
+                <div class="popup-header">
+                    <span class="popup-callsign">${f.callsign}</span>
+                </div>
+                <div class="popup-grid">
+                    <div class="popup-item">
+                        <span class="popup-label">Registration</span>
+                        <span class="popup-value">${f.reg}</span>
+                    </div>
+                    <div class="popup-item">
+                        <span class="popup-label">Altitude</span>
+                        <span class="popup-value">${formatAlt(f.alt)}</span>
+                    </div>
+                    <div class="popup-item">
+                        <span class="popup-label">Ground Speed</span>
+                        <span class="popup-value">${Math.round(f.speed)} kts</span>
+                    </div>
+                    <div class="popup-item">
+                        <span class="popup-label">Heading</span>
+                        <span class="popup-value">${Math.round(f.heading)}°</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        if (state.markers[f.id]) {
+            state.markers[f.id].setLatLng([f.lat, f.lng]);
+            state.markers[f.id].setIcon(icon);
+            // Only update popup if not open to avoid flicker
+            if (!state.markers[f.id].isPopupOpen()) {
+                state.markers[f.id].setPopupContent(popupContent);
             }
         } else {
-            const marker = L.marker([flight.lat, flight.lng], { icon: customIcon })
-                .bindPopup(popupContent)
-                .addTo(map);
-            markers[flight.id] = marker;
+            const marker = L.marker([f.lat, f.lng], { icon })
+                .bindPopup(popupContent, { offset: [0, -10] })
+                .addTo(state.map);
+            state.markers[f.id] = marker;
         }
     });
 
-    Object.keys(markers).forEach(id => {
-        if (!currentFlightIds.has(id)) {
-            map.removeLayer(markers[id]);
-            delete markers[id];
+    // Cleanup stale markers
+    Object.keys(state.markers).forEach(id => {
+        if (!currentIds.has(id)) {
+            state.map.removeLayer(state.markers[id]);
+            delete state.markers[id];
         }
     });
 }
 
-function updateSidebar(flights) {
-    flightListEl.innerHTML = '';
+/**
+ * Update Sidebar UI
+ */
+function updateUI() {
+    const filtered = getFilteredFlights();
+    elements.flightCount.textContent = state.flights.length;
+    elements.visibleCount.textContent = `${filtered.length} visible`;
+
+    elements.flightList.innerHTML = '';
     
-    if (flights.length === 0) {
-        flightListEl.innerHTML = '<li class="flight-placeholder">No live flights mapped in airspace natively</li>';
+    if (filtered.length === 0) {
+        elements.flightList.innerHTML = '<li class="flight-placeholder">No matching flights in range</li>';
         return;
     }
 
-    flights.forEach(flight => {
-        const listItem = document.createElement('li');
-        listItem.className = 'flight-item';
-        listItem.innerHTML = `
-            <div class="flight-callsign">${flight.callsign}</div>
-            <div class="flight-details">
-                <span>${formatAlt(flight.alt)}</span>
-                <span>${formatSpeed(flight.speed)}</span>
+    filtered.forEach(f => {
+        const li = document.createElement('li');
+        li.className = 'flight-item';
+        li.innerHTML = `
+            <div class="flight-info-main">
+                <span class="flight-callsign">${f.callsign}</span>
+                <span class="flight-reg">${f.reg}</span>
+            </div>
+            <div class="flight-metrics">
+                <div class="metric-row">
+                    <span class="metric-label">ALT</span>
+                    <span>${formatAltShort(f.alt)}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">SPD</span>
+                    <span>${Math.round(f.speed)}</span>
+                </div>
             </div>
         `;
-        
-        listItem.addEventListener('click', () => {
-            map.flyTo([flight.lat, flight.lng], 8, { duration: 1 });
-            markers[flight.id].openPopup();
+
+        li.addEventListener('click', () => {
+            state.map.flyTo([f.lat, f.lng], 10, { duration: 1.5 });
+            setTimeout(() => {
+                if (state.markers[f.id]) state.markers[f.id].openPopup();
+            }, 1000);
+            
+            // On mobile, hide sidebar after selection
+            if (window.innerWidth < 768) toggleSidebar();
         });
 
-        flightListEl.appendChild(listItem);
+        elements.flightList.appendChild(li);
     });
 }
 
-window.addEventListener('DOMContentLoaded', initMap);
+/**
+ * Utilities
+ */
+function getFilteredFlights() {
+    if (!state.searchQuery) return state.flights;
+    const q = state.searchQuery.toLowerCase();
+    return state.flights.filter(f => 
+        f.callsign.toLowerCase().includes(q) || 
+        f.reg.toLowerCase().includes(q)
+    );
+}
+
+function handleSearch(e) {
+    state.searchQuery = e.target.value;
+    updateUI();
+    renderMarkers();
+}
+
+function toggleSidebar() {
+    state.sidebarHidden = !state.sidebarHidden;
+    elements.sidebar.classList.toggle('hidden', state.sidebarHidden);
+}
+
+function recenterMap() {
+    state.map.flyTo(CONFIG.INITIAL_VIEW, CONFIG.INITIAL_ZOOM, { duration: 1.5 });
+}
+
+function formatAlt(ft) {
+    return ft <= 0 ? 'Ground' : `${ft.toLocaleString()} ft`;
+}
+
+function formatAltShort(ft) {
+    if (ft <= 0) return 'GND';
+    if (ft >= 1000) return `${Math.round(ft/1000)}k`;
+    return ft;
+}
+
+// Start
+window.addEventListener('DOMContentLoaded', init);

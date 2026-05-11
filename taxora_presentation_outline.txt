@@ -1,0 +1,97 @@
+Slide 1 – Title Slide
+	Taxora
+	AI-powered tax deduction assistant for Finland
+
+Slide 2 – Executive Summary
+	Taxora is an AI agent-powered tax assistance platform.
+	Designed to simplify tax return preparation for individuals.
+	Autonomously interprets tax regulations and identifies missing deductions.
+	Bridges the gap between Finland’s digital tax infrastructure and personalized support needs.
+
+Slide 3 – Problem Statement
+	Finland’s tax system requires independent review of pre-filled returns and self-identified deductions.
+	Extremely complex for freelancers, immigrants, remote workers, and micro-entrepreneurs.
+	Language barriers and complex terminology cause significant friction.
+	Users frequently miss eligible deductions (e.g., home office, YEL pension, travel allowances).
+
+Slide 4 – Proposed Solution
+	Acts as an intelligent interpretation layer over existing public systems like MyTax.
+	Utilizes a conversational AI interface for natural language interaction.
+	Automates the discovery of eligible deductions using financial data analysis.
+	Consistently aligns recommendations with official Finnish Tax Administration guidance.
+
+Slide 5 – Technology Architecture
+	Uses a modular, multi-agent AI architecture instead of a single monolithic model.
+	Orchestrator Agent: Coordinates overall workflow and communication.
+	Tax Knowledge Agent: Interprets official Finnish tax regulations.
+	Deduction Discovery Agent: Analyzes expenses to find eligible deductions.
+	Receipt Processing Agent: Employs OCR to extract structured financial data.
+	Compliance Verification Agent: Ensures suggestions stay within legal limits.
+	Tax Report Generation Agent: Compiles structured, MyTax-ready summaries.
+
+Slide 6 – Key Features
+	AI Tax Chat: Conversational guidance in natural language.
+	Automatic Deduction Discovery: Proactive identification of eligible expense categories.
+	Receipt Scanner: OCR technology for automated data extraction and categorization.
+	Tax-Ready Summary Reports: Structured outputs aligned with Finnish reporting requirements.
+
+Slide 7 – Value Proposition
+	Reduces administrative complexity compared to manual MyTax filing.
+	Delivers personalized tax interpretation without the high cost of traditional accountants.
+	Demystifies complex tax rules for diverse users, especially immigrants and freelancers.
+	Shifts the focus from reactive compliance monitoring to proactive taxpayer assistance.
+
+Slide 8 – Finland Market Justification
+	Advanced digital infrastructure with over 90% digital tax portal usage.
+	High tax morale and a low VAT gap (~3%), indicating strong overall compliance.
+	Government authorities are already receptive to AI (e.g., Virtanen chatbot).
+	Strict privacy rules (GDPR) align perfectly with Taxora’s compliance-first architecture.
+
+Slide 9 – Target Market
+	Freelancers & Self-Employed: Require assistance with YEL obligations and expense tracking.
+	Immigrants: Need help overcoming language barriers and unfamiliar tax frameworks.
+	Remote Workers: Seek clarity on home office and equipment deductions.
+	Micro-Entrepreneurs: Need an affordable alternative to professional accounting services.
+
+Slide 10 – Market Size & Opportunity
+	Finland’s active workforce comprises approximately 2.7 million individuals.
+	Primary early adopter segment includes 200,000–250,000 freelancers and self-employed professionals.
+	Growing immigrant population of over 500,000 residents adds significant potential.
+	Projected initial reach of 20,000–50,000 active users in Finland.
+	High potential for geographic expansion across Nordic markets (Sweden, Denmark, Norway).
+
+Slide 11 – Business Model
+	Freemium SaaS: Free tier includes basic AI chat and limited deduction guidance.
+	Premium Subscription: €5–€10/month (or €30–€50/year) unlocks OCR and advanced optimization.
+	API Partnerships (B2B): Integration with accounting firms, freelancer platforms, and payroll tools.
+	White-Label Licensing: Offering localized AI tax assistance for digital finance ecosystems.
+
+Slide 12 – Competitive Advantage
+	End-to-End Workflow: Unifies discovery, compliance verification, and reporting.
+	Multi-Agent Architecture: Highly coordinated AI offers superior accuracy over simple chatbots (e.g., Taxxa.ai).
+	High Accessibility: Specifically designed to support non-expert and immigrant users.
+	Assistance-First Approach: Focuses on actively finding deductions, not just processing submitted forms.
+
+Slide 13 – MVP Strategy
+	Objective: Validate core capabilities with minimal initial development complexity.
+	Scope: Web-based platform featuring AI tax chat, deduction discovery, and structured summaries.
+	Early Testing: Focuses on direct feedback from freelancer and immigrant communities.
+	Future Iterations: Mobile support, banking APIs, and expanded automation workflows.
+
+Slide 14 – Financial Projection & Break-even
+	Startup Costs: €14,500 – €30,000 for MVP development and initial launch.
+	Year 1 (Validation): 300–600 paying users, earning €12,000 – €24,000.
+	Year 2 (Break-even): 2,000–5,000 paying users, earning €80,000 – €200,000.
+	Year 3 (Scalable Growth): 10,000+ paying users, targeting €400,000 – €750,000 before Nordic expansion.
+
+Slide 15 – Risk & Compliance Strategy
+	Data Privacy (GDPR): Compliance-first design with minimal retention of personal financial data.
+	EU AI Act Readiness: Employs explainable AI logic to maintain transparent decision support.
+	Guidance Positioning: Taxora advises, but final MyTax submission remains safely under user control.
+	System Resilience: Modular design allows for simple swapping of external OCR or API services.
+
+Slide 16 – Roadmap & Strategic Impact
+	Phase 1 (MVP Validation): Develop core web application and conduct early adopter testing (Months 1–9).
+	Phase 2 (Automation Focus): Launch OCR receipt processing and prepare B2B API integrations (Months 10–12).
+	Phase 3 (Nordic Scaling): Adapt regulatory knowledge modules for Sweden, Estonia, Denmark, and Norway (Months 13–18).
+	Long-Term Vision: Establish Taxora as the foundational AI infrastructure for personal tax navigation across Northern Europe.
